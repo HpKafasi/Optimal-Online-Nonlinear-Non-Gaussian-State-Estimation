@@ -1,4 +1,4 @@
-You can consider the any discrete time system to be given but we considered the system on png file.   
+You can consider the any discrete time system to be given but we considered the system on the png file.   
 
 Task 1: Assuming 𝑥𝑥0∼𝑁𝑁(0,1), use the Monte Carlo method to estimate the pdfs 𝑝𝑝(𝑥𝑥1), 𝑝𝑝(𝑥𝑥50) and 𝑝𝑝(𝑥𝑥100). 
 Explain why it would be problematic to use the traditional Kalman filter to estimate the unknown state given
