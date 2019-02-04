@@ -1,0 +1,67 @@
+%------------------------------GRID BASED METHOD---------------------------------
+%Benefited from the articles which are "Fast Bayesian Tracking for Location
+%Estimation by Grid-based Method" and "A Tutorial on Particle Filters for Online
+%Nonlinear/Non-Gaussian Bayesian Tracking"
+%DEFINITIONS:
+  % Q  :  Noise Covariance in the system
+  % R  :  Noise Covariance in the Measurement
+  % N  :  The number of particles
+  % GC :  Grid Center
+  % w   : Weights
+  % w_u : Updated weights 
+  % x_est  : Estimated x 
+%EQUATİON:
+  % x(k)= ( x(k-1)./2 )+( 25*x(k-1))./ (1+x(k-1).^2)+8*cos(1.2*k)+v(k-1)
+  % z(k)= x(k).^2./20+n(k)
+  
+clc
+clear;
+load 'xfile.mat';
+load 'zfile.mat';
+R = 1; 
+Q = 10;                         
+N = 10;                         
+GC=zeros(N,1);                  % Initial Grid Centers
+Grid=linspace(-50,50,N)';       % Grid number
+w=ones(N,1)/N;                  % Initial Weights
+k=0;                            % Moment
+
+while k<100                     % loop for k moment
+    k=k+1;
+    %compute new grid center according to grid number
+    for i=1:N              
+        GC(i)=Grid(i)./2+25*Grid(i)./(1+Grid(i).^2)+8*cos(1.2*k);
+    end
+    
+    %Update new weights according to grid number 
+    w_u=zeros(N,1);
+    for i=1:N              
+        for j=1:N
+            w_u(i)=w_u(i)+w(j)*(1./sqrt(2*Q*pi))*exp(-(Grid(i)-GC(j)).^2./(2./Q));
+        end
+    end
+    
+    %Calculate weights with regard to updated weights
+    for i=1:N
+        w(i)=w_u(i)*(1/sqrt(2*R*pi))*exp(-(Grid(i).^2./20-z(k)).^2./(2./R));
+    end
+    
+    % Normalize the weights and compute estimated value according to normalized weights
+    w=w./sum(w);
+    x_est(k)= Grid'*w;
+end
+
+%Plot estimated and actual states
+t = linspace(1,100,100);
+figure(1);
+plot(t, x, '-k'); 
+hold on
+plot(t, x_est, '-r');
+xlabel('Time(k)')
+ylabel('x(k)')
+legend('Actual State','Estimated State');
+title('Actual and Estimated State with Grid Based Filtering Method')
+
+%Root Mean Square Error to see performance of Grid Based Filtering Method
+RMSE_Grid = sqrt(mean((x - x_est).^2));
+display(RMSE_Grid);
