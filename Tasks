@@ -1,0 +1,20 @@
+You can consider the any discrete time system to be given but we considered the system on png file.   
+
+Task 1: Assuming 𝑥𝑥0∼𝑁𝑁(0,1), use the Monte Carlo method to estimate the pdfs 𝑝𝑝(𝑥𝑥1), 𝑝𝑝(𝑥𝑥50) and 𝑝𝑝(𝑥𝑥100). 
+Explain why it would be problematic to use the traditional Kalman filter to estimate the unknown state given
+the measurement data 𝑧𝑧𝑘𝑘.
+
+Task 2: Suppose that during one experiment, the output measurements 𝑧𝑧𝑘𝑘,0≤𝑘𝑘≤100 have been recorded. Use the extended Kalman filter,
+grid based method and particle filter to estimate the unknown state information 𝑥𝑥𝑘𝑘,0≤𝑘𝑘≤100.
+
+Task 3: Now suppose that the actual unknown state information 𝑥𝑥𝑘𝑘,0≤𝑘𝑘≤100 is available. Define suitable measures to compare and evaluate
+the performance of the different filtering techniques in Task 2. Explain why there are differences in their performance.
+
+Task 4: Explore how the performance of the three filtering techniques in Task 2 can be improved. Re-estimate the unknown state information
+using these improved schemes. Compare the estimation results with those obtained in Task 2 & 3.
+Do they support your theoretical prediction?
+
+Task 5: Critically evaluate your work. Have you achieved the objectives? What problems did you find during this work? What conclusions
+can you draw from your design? From the experience of this work, what do you need to consider when solving a practical problem?
+
+
