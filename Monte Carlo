@@ -1,0 +1,73 @@
+%----MONTE CARLO METHOD TO ESTIMATE PDF of UNKNOWN PARAMATERS----
+%DEFINITIONS:
+  % x0 :  random number for initial
+  % v0 :  white gausian noise with wariance 10 for initial noise
+  % n  :  white gausian noise with wariance 1
+  % v  :  white gausian noise with wariance 10
+  % x(k):  system from equation in k moment
+  % z(k):  system from equation in k moment
+%EQUATİON:
+  % x(k)= ( x(k-1)./2 )+( 25*x(k-1))./ (1+x(k-1).^2)+8*cos(1.2*k)+v(k-1)
+  % z(k)= x(k).^2./20+n(k)
+clc
+clear;
+observations=0;
+while observations<100000       % the number of monte carlo observations
+    observations=observations+1;
+    
+    x0=randn(1,1);              %generate random number for initial (k=0)
+    v0=sqrt(10).*randn(1,1);    %generate white gausian noise with wariance 10 for initial noise (k=0)
+    n=sqrt(1).*randn(1,100);    %generate white gausian noise with wariance 1
+    v = sqrt(10).*randn(1,100); %generate white gausian noise with wariance 10
+    
+    x(1)=x0./2+25*x0./(1+x0.^2)+8*cos(1.2)+v0;      % X(1) from the equation k=1 moment
+    z(1)=x(1)^2/20+n(1);                            % Z(1) from the equation
+    
+    for k=2:100                 %generate loop for different time (k) moment
+        x(k)=x(k-1)./2+(25*x(k-1))./(1+x(k-1)^2)+8*cos(1.2*k)+v(k-1);   % calculate X(k) from the equation
+        z(k)=x(k)^2/20+n(k);                                            % calculate Z(k) from the equation
+    end
+    X1(observations)=x(1);      % Save MC observation for X1
+    X50(observations)=x(50);    % Save MC observation for X50
+    X100(observations)=x(100);  % Save MC observation for X100
+end
+
+%to see discrete time distributions on histogram
+figure
+histogram(X1,60,'Normalization','probability','FaceColor','b','FaceAlpha',1)   % to see pdf distribution of X1 as discrete function
+hold on;
+histogram(X50,60,'Normalization','probability','FaceAlpha',1)                  % to see pdf distribution of X50 as discrete function
+hold on;
+histogram(X100,60,'Normalization','probability','FaceColor','r','FaceAlpha',1) % to see pdf distribution of X100 as discrete function
+
+%to see continious distribution on graphs
+[L1,R1]=ksdensity(X1);          % Draw continuous probability density estimate of the sample X1 in the vector
+[L50,R50]=ksdensity(X50);       % Draw continuous probability density estimate of the sample X50 in the vector
+[L100,R100]=ksdensity(X100);    % Draw continuous probability density estimate of the sample X100 in the vector
+%figure(2)
+plot(R1,L1,'-b','linewidth',2);                   hold on;
+plot(R50,L50,'Color',[0.6 0.1 0],'linewidth',2);  hold on;
+plot(R100,L100,'-r','linewidth',2);               hold on;
+grid on;
+legend('pdf(x1)','pdf(x50)','pdf x100)','x1','x50','x100')
+ylabel('Estimated pdf')
+xlabel('Unknown State Information')
+title('Estimation the PDFs: p(x_1), p(x_5_0) and p(x_1_0_0) and Histogram of Distributions')
+
+%...Saved Data Sets Will be Used For Filter Files...
+save('xfile.mat','x');% Save x values 
+save('zfile.mat','z');% Save z values 
+
+% plot recorded real states x(k)
+figure
+plot(x,'-b');          
+ylabel('State, x(k)')
+xlabel('Time, k')
+title(' Recorded State x(k) From the Experiments of MC ')
+
+% plot recorded Measurement Data z(k)
+figure  
+plot(z,'-r');          
+ylabel('Measurement Data, z(k)')
+xlabel('Time, k')
+title(' Recorded Measurement Data z(k) for Same Experiment');
