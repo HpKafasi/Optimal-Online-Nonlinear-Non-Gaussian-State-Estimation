@@ -1,0 +1,79 @@
+%----------------PARTICLE FILTER TO ESTIMATE UNKNOWN STATE-----------
+%DEFINITIONS:
+  % Q  :  Noise Covariance in the system
+  % R  :  Noise Covariance in the Measurement
+  % N  :  The number of particles
+  % T  :  Time
+  % x0 :  Initial State
+  % x_Priori     :  a priori particles
+  % x_Posteriori :  a posteriori particles
+  % q  :
+  % x_est : time by time output of the particle filters estimate 
+  % x_act_vec      :   the actual output vector for measurement values
+  % x_estimated_vec:   the estimated state vector
+%EQUATİON:
+  % x(k)= ( x(k-1)./2 )+( 25*x(k-1))./ (1+x(k-1).^2)+8*cos(1.2*k)+v(k-1)
+  % z(k)= x(k).^2./20+n(k)  
+clc
+clear;
+load('xfile.mat');  % call saved x values
+load('zfile.mat');  % call saved z values
+
+x0 = 0.1;           % initial  state
+Q  = 10 ;           % Noise covariance in the system
+R  = 1  ;           % Noise covariance in the measurement
+N  = 100;           % The number of particles
+
+% Initialize the particle filter.
+i=0;
+while  i < N
+    i=i+1;
+    x_Priori(i) = x0 + sqrt(Q) * randn;
+end
+
+x_act_vec = [x0];             % the actual output vector for measurement values
+x_est = [x0];             % time by time output of the particle filters estimate 
+x_estimated_vec = [x_est];    % the vector of particle filter estimates.
+
+% To write code to benefit from Dan's Book(466) 
+for t = 1:100
+    i=0;
+    while  i < N
+        i=i+1;
+        % given the prior set of particle compute each of these particles through the state
+        x_Posteriori(i) = 0.5*x_Priori(i) + 25*x_Priori(i)/(1 + x_Priori(i)^2) + 8*cos(1.2*t) + sqrt(Q)*randn;
+        z_Posteriori(i) = x_Posteriori(i)^2/20;
+        q(i) = (1/sqrt(2*pi*R)) * exp(-(z(t)- z_Posteriori(i))^2/(2*R));
+    end
+    
+    % Normalize the likelihood of each a priori estimate
+    qsum = sum(q);
+    for i = 1 : N
+        q(i) = q(i) / qsum;
+    end
+    
+    % Accumulate the likelihoods q into a sum, one at a time, until the accumulated sum is greater than random number
+    i=0;
+    while  i < N
+         i=i+1;
+         x_Priori(i) = x_Posteriori(find(rand <= cumsum(q),1));
+    end
+   
+    x_est = mean(x_Priori);        % the algebraic mean of the particles must be approximated according to the posteriori particles
+    x_act_vec = [x_act_vec x(t)];  % to save the actual state 
+    x_estimated_vec = [x_estimated_vec x_est];   % to save the estimated state 
+    end
+% plot recorded actual states and estimated state
+t = linspace(1,100,101);
+figure(1);
+plot(t, x_act_vec, 'b--');
+hold on
+plot(t, x_estimated_vec, '-r');
+xlabel('Time(k)')
+ylabel('x(k)')
+legend('Actual State','Estimated State');
+title('Actual and Estimated State with Using Particle Filter');
+
+%Root Mean Square Error to see performance of PF
+RMSE_PF = sqrt(mean((x_act_vec - x_estimated_vec).^2));
+display(RMSE_PF);
