@@ -1,0 +1,89 @@
+%----------------ITERATED EXTENDED KALMAN FILTER TO ESTIMATE UNKNOWN STATE-----------
+%DEFINITIONS:
+  % x0 :  initial value
+  % v0 :  white gausian noise with wariance 10 for initial noise
+  % n  :  white gausian noise with wariance 1
+  % v  :  white gausian noise with wariance 10
+  % x(k):  system from equation in k moment
+  % z(k):  system from equation in k moment
+%   P_Minus represent : P^(-)=> a priori covariance 
+%   P_Plus represent  : P^(+)=> a posteriori covariance 
+%   Pi_Plus represent : Iterated posteriori covariance
+%   x_Minus represent : x^(-)=> a priori estimate 
+%   x_Plus represent  : x^(+)=> a posteriori estimate 
+%   xi_Plus represent : Iterated  posteriori estimate
+
+%EQUATİON:
+  % x(k)= ( x(k-1)./2 )+( 25*x(k-1))./ (1+x(k-1).^2)+8*cos(1.2*k)+v(k-1)
+  % z(k)= x(k).^2./20+n(k)
+
+%To write code to benefit from Lecture Note's formulas and Dan's Book(411&412)  
+clc;
+clear;
+load('xfile.mat');  % call saved x values
+load('zfile.mat');  % call saved z values
+
+x0=0;       % initial value
+P0=1000;    % initial error covariance
+
+F=0.5+(25-25*x0^2)/(1+x0^2)^2;                %Compute partial derivative
+P_Minus(1)=F*P0*F'+10;                        %Compute a priori covariance for k=1
+x_Minus(1)=x0/2+(25*x0)/(1+x0^2)+8*cos(1.2);  %Compute a priori estimate for k=1
+H(1)=x_Minus(1)/10;                           %Compute partial derivative matrix for k=1
+
+%Perform the measurement update of the state estşmate and estimation-error covariance for k=1 as follows:
+K(1)=P_Minus(1)*H(1)'*inv(H(1)*P_Minus(1)*H(1)'+1);                 % compute kalman gain
+x_Plus(1)=x_Minus(1)+K(1)*(z(1)-(x_Minus(1)^2/20));                 % compute a posteriori estimate for k=1
+P_Plus(1)=(eye-K(1)*H(1))*P_Minus(1)*(eye-K(1)*H(1))'+K(1)*K(1)';   % compute a posteriori covariance for k=1   
+    
+for k=2:100         % loop for k moment
+    i=0;
+    while i<=9      % iteration number (10 times)
+        i=i+1;
+        % Dan's Book from Equation (13.52)
+        xi_Plus(1,i)=x_Plus(1);         % Initial of iterated show posteriori estimate
+        Pi_Plus(1,i)=P_Plus(1);         % Initial of iterated show posteriori covariance 
+        Hi(1,i)=xi_Plus(1,i)/10;        % compute partial derivative for iterated
+        % Dan's Book from Equation (13.53)
+        Ki(1,i)=P_Minus(1)*Hi(1,i)'*inv(Hi(1,i)*P_Minus(1)*Hi(1,i)'+1);      % compute kalman gain
+        xi_Plus(1,i+1)=x_Minus(1)+Ki(1,i)*(z(1)-xi_Plus(1,i).^2./20-Hi(1,i)*(x_Minus(1)-xi_Plus(1,i))); % compute iterated a posteriori estimate 
+        Pi_Plus(1,i+1)=(eye-Ki(1,i)*Hi(1,i))*P_Minus(1);                     % compute iterated a posteriori covariance
+        % Dan's Book from Equation (13.61)        
+        F=0.5+(25-25*x_Plus(k-1)^2)/(1+x_Plus(k-1)^2)^2;
+        P_Minus(k)=F*P_Plus(k-1)*F'+10;
+        x_Minus(k)=x_Plus(k-1)/2+(25*x_Plus(k-1))/(1+x_Plus(k-1)^2)+8*cos(1.2*k);
+        H(k)=x_Minus(k)/10;
+        % Dan's Book from Equation (13.64)
+        K(k)=P_Minus(k)*H(k)'*inv(H(k)*P_Minus(k)*H(k)'+1);                  % compute kalman gain
+        P_Plus(k)=(eye-K(k)*H(k))*P_Minus(k)*(eye-K(k)*H(k))'+K(k)*K(k)';    % compute a posteriori covariance
+        x_Plus(k)=x_Minus(k)+K(k)*(z(k)-(x_Minus(k)^2/20));                  % compute a posteriori estimate
+        % Dan's Book from Equation (13.65)
+        xi_Plus(k,i)=x_Plus(k);          % Initial of iterated show posteriori estimate
+        Pi_Plus(k,i)=P_Plus(k);          % Initial of iterated show posteriori covariance
+        Hi(k,i)=xi_Plus(k,i)/10;         % compute partial derivative for iterated
+        % Dan's Book from Equation (13.58)
+        Ki(k,i)=P_Minus(k)*Hi(k,i)'*inv(Hi(k,i)*P_Minus(k)*Hi(k,i)'+1);      % compute kalman gain
+        xi_Plus(k,i+1)=x_Minus(k)+Ki(k,i)*(z(k)-xi_Plus(k,i).^2./20-Hi(k,i)*(x_Minus(k)-xi_Plus(k,i)));% compute iterated a posteriori estimate 
+        Pi_Plus(k,i+1)=(eye-Ki(k,i)*Hi(k,i))*P_Minus(k);                     % compute iterated a posteriori covariance
+    end
+end
+
+%Plot actual states and estimated for EKF and Iterated EKF
+figure
+t = linspace(1,100,100);
+plot(t,x,'b--','LineWidth',2);
+hold on
+plot(t,x_Plus,'r--','LineWidth',2);
+hold on;
+plot(t,xi_Plus(:,11),'k-','LineWidth',1);
+ylabel('x(k)')
+xlabel('Time(k)')
+legend('Actual State','Estimated State','IEKF Estimated');
+title('Actual and Estimated State with Grid Based Filtering Method')
+title('Making Comparison among EKF and IEKF Method')
+
+%Root Mean Square Error to see performance of EKF and Iterated EKF
+RMSE_EKF = sqrt(mean((x - x_Plus).^2));
+display(RMSE_EKF);
+RMSE_IEFK = sqrt(mean((x' - xi_Plus(:,11)).^2));
+display(RMSE_IEFK);
