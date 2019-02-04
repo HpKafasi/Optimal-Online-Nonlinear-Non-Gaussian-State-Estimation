@@ -1,0 +1,153 @@
+%----------------REGULAIZED PARTICLE FILTER TO ESTIMATE UNKNOWN STATE-----------
+%---------To write code Dan's book page 473-474 formulas ------------
+%DEFINITIONS:  
+  % x_Priori     : a priori particles
+  % x_Reg_Priori : a posteriori particles
+  % Q  :  Noise Covariance in the system
+  % R  :  Noise Covariance in the Measurement
+  % N  :  The number of particles
+  % NRegularized  : Number of probability bins in the regularized particle filter
+  % T  :  Time
+  % x0 :  Initial State
+  % x_Priori     :  priori particles
+  % x_Posteriori :  posteriori particles
+  % z_P : system from equation
+  % q   : the Relative Likelihood
+  % h   : the Optimal kernel bandwidth
+  % v_n : the Volume of the n-dimensional unit hypersphere
+  % n   : the Dimension of the state vector
+  % x_Reg_Posteriori : regularized posteriori particles
+  % x_Reg_Priori     : regularized priori particles
+  % x_Reg            : regularized particle filter estimate
+  % x_Part           : The particle filter estimate
+  % x_estimated_part : estimated particle filter
+  % x_estimated_reg  : estimated regularized particle filter
+%EQUATİON:
+  % x(k)= ( x(k-1)./2 )+( 25*x(k-1))./ (1+x(k-1).^2)+8*cos(1.2*k)+v(k-1)
+  % z(k)= x(k).^2./20+n(k)  
+clc
+clear;
+load('xfile.mat');  % call saved x values
+load('zfile.mat');  % call saved z values
+
+x0 = 0.1;   Q  = 10 ;     R  = 1  ;     N  = 50 ;        T = 100 ;        
+NRegularized = 5 * N; 
+x_Part = x0;
+x_Reg = x0;
+% Initialize the particle filter.
+i=0;
+while  i < N
+    i=i+1;
+    x_Priori(i) = x0 + sqrt(Q) * randn;       % normal particle filter
+    x_Reg_Priori(i) = x_Priori(i);            % regularized particle filter
+end
+
+% Initialization for the regularized particle filter.
+% (Equation 15.34)
+n = length(x0);         % Dimension of the state vector
+v_n = 2;                % The Volume of the n-dimensional unit hypersphere
+h = (8 * v_n^(-1) * (n + 4) * (2 * sqrt(pi))^n)^(1 / (n + 4)) * N^(-1 / (n + 4)); % the optimal kernel bandwidth
+
+x_actual = [x0];                            % Initialize arrays.
+z_actual = [x0^2 / 20 + sqrt(R) * randn];   % Initialize arrays.
+x_estimated_part = [x_Part];
+x_estimated_reg = [x_Reg];
+
+for k = 1 : T   
+    % Particle filter (Dan's Book Page 466)
+    for i = 1 : N
+        x_Posteriori(i) = 0.5 * x_Priori(i) + 25 * x_Priori(i) / (1 + x_Priori(i)^2) + 8 * cos(1.2*(k)) + sqrt(Q) * randn;
+        z_P = x_Posteriori(i)^2 / 20;
+        q(i) = (1 / sqrt(R) / sqrt(2*pi)) * exp(-(z(k) - z_P).^2 / 2 / R);      % equation 15.18   
+    end
+    % Normalize the likelihood of each a priori estimate
+    q = q./sum(q);
+   
+    % Regularized particle filter resampling (Dan's Book Page 473)  
+    for i = 1 : N
+        u = rand;           %Random Number between 0 and 1   (Page 467. Rule 1)
+        qtempsum = 0;
+        for j = 1 : N
+            qtempsum = qtempsum + q(j);
+            if qtempsum >= u
+                x_Priori(i) = x_Posteriori(j);
+                break;
+            end
+        end
+    end                     % completed formula (Page 467. Rule 2)
+ 
+    x_Part = mean(x_Priori); % The particle filter estimate is the mean of the particles (Page 473. rule 1 )
+    
+    % Perform the time update to the get the a priori regularized particles.
+    for i = 1 : N
+        x_Reg_Posteriori(i) = 0.5 * x_Reg_Priori(i) + 25 * x_Reg_Priori(i) / (1 + x_Reg_Priori(i)^2) + 8 * cos(1.2*(k)) + sqrt(Q) * randn;
+        z_P = x_Reg_Posteriori(i)^2 / 20;
+        q(i) = (1 / sqrt(R) / sqrt(2*pi)) * exp(-(z(k) - z_P).^2 / 2 / R);
+    end
+    % Normalize the probabilities of the a priori particles.
+    q = q./sum(q);
+    
+    % Compute the covariance of the a priori particles. (Page 473-Rule 2)
+    S = cov(x_Reg_Posteriori');
+    A = chol(S)';
+    
+    % Define the field from which we will choose a posteriori particles for the regularized particle filter.
+    xreg(1) = min(x_Reg_Posteriori) - std(x_Reg_Posteriori);
+    xreg(NRegularized) = max(x_Reg_Posteriori) + std(x_Reg_Posteriori);
+    F_X = (xreg(NRegularized) - xreg(1)) / (NRegularized - 1);
+  
+    for i = 2 : NRegularized - 1
+        xreg(i) = xreg(i-1) + F_X;
+    end
+    
+    %Generate the pdf that is required for the regularized particle filter.(Page 474-Rule 5)    
+    for j = 1 : NRegularized
+        q_RPF(j) = 0;
+        for i = 1 : N
+            normx = norm(inv(A) * (xreg(j) - x_Reg_Posteriori(i)));
+            if normx < h
+                q_RPF(j) = q_RPF(j) + q(i) * (n + 2) * (1 - normx^2 / h^2) / 2 / v_n / h^n / det(A);
+            end
+        end
+    end
+    % Normalize the likelihood of each state estimate for the regularized particle filter.
+    q_RPF=q_RPF./sum(q_RPF);
+  
+    % Resample for the regularized particle filter. (Page 474-Rule 6)
+    for i = 1 : N
+        u = rand;           % uniform random number between 0 and 1
+        qtempsum = 0;
+        for j = 1 : NRegularized
+            qtempsum = qtempsum + q_RPF(j);
+            if qtempsum >= u
+                x_Reg_Priori(i) = xreg(j);
+                break;
+            end
+        end
+    end
+    % The regularized particle filter estimate is the mean of the regularized particles.
+    x_Reg = mean(x_Reg_Priori);
+    % Record data 
+    x_estimated_reg = [x_estimated_reg x_Reg];
+    x_estimated_part = [x_estimated_part x_Part];
+    z_actual = [z_actual z(k)];
+    x_actual = [x_actual x(k)];  
+end
+
+%plot figures
+t = linspace(1,100,101);
+figure;
+plot(t, x_actual, 'b--','LineWidth',1.5);
+hold on; 
+plot(t, x_estimated_part, 'r--','LineWidth',1.5);
+hold on
+plot(t, x_estimated_reg, 'k-','LineWidth',1);
+ylabel('x(k)')
+xlabel('Time, k')
+legend('Actual State','PF Estimated','RPF Estimated');
+title('Making Comparison among Particle filter and Regularized PF Method')
+%Root Mean Square Error to see performance of PF and RPF
+RMSE_PF = sqrt(mean((x_actual - x_estimated_part).^2));
+display(RMSE_PF);
+RMSE_RPF= sqrt(mean((x_actual - x_estimated_reg).^2));
+display(RMSE_RPF);
