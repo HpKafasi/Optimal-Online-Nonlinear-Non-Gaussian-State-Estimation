@@ -1,0 +1,59 @@
+%----------------EXTENDED KALMAN FILTER TO ESTIMATE UNKNOWN STATE-----------
+%DEFINITIONS:
+  % x0 :  random number for initial
+  % v0 :  white gausian noise with wariance 10 for initial noise
+  % n  :  white gausian noise with wariance 1
+  % v  :  white gausian noise with wariance 10
+  % x(k):  system from equation in k moment
+  % z(k):  system from equation in k moment
+%   P_Minus represent : P^(-)=> a priori covariance 
+%   P_Plus represent  : P^(+)=> a posteriori covariance 
+%   x_Minus represent : x^(-)=> a priori estimate 
+%   x_Plus represent  : x^(+)=> a posteriori estimate 
+
+%EQUATİON:
+  % x(k)= ( x(k-1)./2 )+( 25*x(k-1))./ (1+x(k-1).^2)+8*cos(1.2*k)+v(k-1)
+  % z(k)= x(k).^2./20+n(k)
+
+%To write code to benefit from Lecture Note's formulas and Dan's Book
+clc;
+clear;
+load('xfile.mat');  % call saved x values
+load('zfile.mat');  % call saved z values
+
+x0=0;       % initial value
+P0=1000;    % initial error covariance
+
+F=0.5+(25-25*x0^2)/(1+x0^2)^2;                %Compute partial derivative
+P_Minus(1)=F*P0*F'+10;                        %Compute a priori covariance for k=1
+x_Minus(1)=x0/2+(25*x0)/(1+x0^2)+8*cos(1.2);  %Compute a priori estimate for k=1
+H(1)=x_Minus(1)/10;                           %Compute partial derivative matrix for k=1
+
+%Perform the measurement update of the state estşmate and estimation-error covariance for k=1 as follows:
+K(1)=P_Minus(1)*H(1)'*inv(H(1)*P_Minus(1)*H(1)'+1);                 % compute kalman gain
+x_Plus(1)=x_Minus(1)+K(1)*(z(1)-(x_Minus(1)^2/20));                 % compute a posteriori estimate for k=1
+P_Plus(1)=(eye-K(1)*H(1))*P_Minus(1)*(eye-K(1)*H(1))'+K(1)*K(1)';   % compute a posteriori covariance for k=1
+
+for k=2:100         % loop for k moment
+%Perform the measurement update of the state estimate and estimation-error covariance for all given scaling k as follows:
+F=0.5+(25-25*x_Plus(k-1)^2)/(1+x_Plus(k-1)^2)^2;                           % compute partial derivative matrix
+P_Minus(k)=F*P_Plus(k-1)*F'+10;                                            % compute a priori covariance matrix
+x_Minus(k)=x_Plus(k-1)/2+(25*x_Plus(k-1))/(1+x_Plus(k-1)^2)+8*cos(1.2*k);  % compute a priori estimate matrix
+H(k)=x_Minus(k)/10;                                                        % compute partial dirrevative matrix
+K(k)=P_Minus(k)*H(k)'*inv(H(k)*P_Minus(k)*H(k)'+1);                        % compute kalman gain
+x_Plus(k)=x_Minus(k)+K(k)*(z(k)-(x_Minus(k)^2/20));                        % compute a posteriori estimate
+P_Plus(k)=(eye-K(k)*H(k))*P_Minus(k)*(eye-K(k)*H(k))'+K(k)*K(k)';          % compute a posteriori covariance
+end
+
+figure
+plot(x,'b--');          % plot recorded states from Monte Carlo Experiment
+hold on
+plot(x_Plus,'r-');      % plot estimated states with EKF
+xlabel('Time, k')
+ylabel('State, x(k)')
+legend('Real State','Estimated State');
+title('Comparing Actual and Estimated State (x(k)) Using EKF Method')
+
+%Root Mean Square Error to see performance of Extended Kalman Filter
+RMSE_EKF = sqrt(mean((x - x_Plus).^2));
+display(RMSE_EKF);
